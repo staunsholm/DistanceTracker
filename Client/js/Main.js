@@ -1,14 +1,24 @@
+var Globals = {
+    totalDistance: 0,
+    latestDistance: 0,
+    latestTime: 0,
+    cntUpdates: 0,
+    startTime: Date.now(),
+    latestDistanceTime: 0
+};
+
 (function () {
     var resetTracking = document.getElementById('resetTracking');
-    var output = document.getElementById('output');
+    var distanceElement = document.getElementById('distance');
+    var timeElement = document.getElementById('time');
+    var speedElement = document.getElementById('speed');
+    var averageElement = document.getElementById('average');
     var map1 = document.getElementById('map1');
     var map2 = document.getElementById('map2');
 
-    var cntUpdates = 0;
-    var totalDistance = 0;
-
     var path = [];
     var latestPosition;
+    var lastDistanceTimeTemp = 0;
 
     // setup two images that can fade from one to the other when new maps are loaded
     var visibleMap = map1;
@@ -49,8 +59,11 @@
 
         if (confirm('Reset recorded route?')) {
             path = [];
-            cntUpdates = 0;
-            totalDistance = 0;
+            Globals.cntUpdates = 0;
+            Globals.totalDistance = 0;
+            Globals.startTime = Date.now();
+            Globals.latestTime = 0;
+            Globals.latestDistanceTime = 0;
 
             update(latestPosition)
         }
@@ -60,28 +73,28 @@
         latestPosition = position;
         path.push(latestPosition.coords);
 
-        cntUpdates++;
-
-        // current position
-        var pos = position.coords.latitude + "," + position.coords.longitude;
+        Globals.cntUpdates++;
 
         // calculate total distance
-        if (cntUpdates > 1) {
-            totalDistance += distance(path[cntUpdates - 1], path[cntUpdates - 2]);
+        if (Globals.cntUpdates > 1) {
+            Globals.latestDistance = distance(path[Globals.cntUpdates - 1], path[Globals.cntUpdates - 2]);
+            Globals.totalDistance += Globals.latestDistance;
         }
 
-        if (totalDistance > 1) {
-            totalDistance = Math.round(totalDistance * 1000) / 1000 + " km";
+        var totalDistanceString;
+        if (this.totalDistance > 1) {
+            totalDistanceString = Math.round(Globals.totalDistance * 1000) / 1000 + " km";
         }
         else {
-            totalDistance = Math.round(totalDistance * 1000) + " m";
+            totalDistanceString = Math.round(Globals.totalDistance * 1000) + " m";
         }
 
-        // show some text info
-        output.innerHTML =
-            "Updates: " + cntUpdates + "<br>" +
-                pos + "<br>" +
-                "Distance: " + totalDistance;
+        distanceElement.innerHTML = "Distance: " + totalDistanceString;
+
+        // time
+        var t = Date.now() - Globals.startTime;
+        Globals.latestDistanceTime = t - lastDistanceTimeTemp;
+        lastDistanceTimeTemp = t;
 
         // find screen size (show biggest possible map for device)
         var screenSize = window.innerWidth + "x" + window.innerHeight;
@@ -90,7 +103,7 @@
         var src = "http://maps.googleapis.com/maps/api/staticmap?size=" + screenSize + "&sensor=false&path=";
 
         // add path to map
-        for (var i = 0; i < cntUpdates; i++) {
+        for (var i = 0; i < Globals.cntUpdates; i++) {
             if (i !== 0) src += "|";
             src += path[i].latitude + "," + path[i].longitude;
         }
@@ -120,8 +133,8 @@
 
         var dLat = (lat2 - lat1) * toRad;
         var dLon = (lon2 - lon1) * toRad;
-        var lat1 = lat1 * toRad;
-        var lat2 = lat2 * toRad;
+        lat1 = lat1 * toRad;
+        lat2 = lat2 * toRad;
 
         var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
             Math.sin(dLon / 2) * Math.sin(dLon / 2) * Math.cos(lat1) * Math.cos(lat2);
@@ -131,17 +144,53 @@
         return d;
     }
 
+    function updateTime(dt) {
+        requestAnimationFrame(updateTime);
+
+        var t = Date.now() - Globals.startTime;
+        if (t === Globals.latestTime) return;
+        Globals.latestTime = t;
+
+        // calculate speed
+        var speed = 0;
+        var averageSpeed = 0;
+
+        if (Globals.cntUpdates > 1 && Globals.latestTime > 0 && dt > 0) {
+            averageSpeed = Math.round(Globals.totalDistance / Globals.latestTime * 1000000);
+            speed = Math.round(Globals.latestDistance / Globals.latestDistanceTime * 1000000);
+        }
+
+        speedElement.innerHTML = "Speed: " + speed + " km/h";
+        averageElement.innerHTML = "Average: " + averageSpeed + " km/h";
+
+        var time = new Date(t);
+
+        var hh = time.getHours() - 1;
+        if (hh < 10) hh = "0" + hh;
+        var mm = time.getMinutes();
+        if (mm < 10) mm = "0" + mm;
+        var ss = time.getSeconds();
+        if (ss < 10) ss = "0" + ss;
+        var ms = time.getMilliseconds() / 100 | 0;
+
+        timeElement.innerHTML = "Time: " + hh + ":" + mm + ":" + ss + "." + ms;
+    }
+
+    updateTime();
+
     // debug: creates new positions at a specified interval
     function createFakePositions(speedInMilliseconds) {
         setInterval(function () {
-            if (cntUpdates === 0) return;
+            if (Globals.cntUpdates === 0) return;
 
             update({
                 coords: {
-                    latitude: path[cntUpdates - 1].latitude + Math.random() / 1000,
-                    longitude: path[cntUpdates - 1].longitude + Math.random() / 1000
+                    latitude: path[Globals.cntUpdates - 1].latitude + Math.random() / 1000,
+                    longitude: path[Globals.cntUpdates - 1].longitude + Math.random() / 1000
                 }
             })
         }, speedInMilliseconds);
     }
+
+    createFakePositions(1000);
 })();

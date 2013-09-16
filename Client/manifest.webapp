@@ -1,0 +1,20 @@
+{
+    "version": "0.1",
+    "name": "Distance Tracker",
+    "description": "Running/biking/whatever tracker",
+    "launch_path": "/index.html",
+    "icons": {
+        "16": "/img/icon-16.png",
+        "48": "/img/icon-48.png",
+        "128": "/img/icon-128.png"
+    },
+    "developer": {
+        "name": "Mikkel Staunsholm",
+        "url": "http://staunsholm.dk"
+    },
+    "installs_allowed_from": ["*"],
+    "default_locale": "en",
+    "permissions": {
+        "geolocation": {}
+    }
+}
