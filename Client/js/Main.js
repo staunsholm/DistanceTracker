@@ -100,7 +100,7 @@ var Globals = {
         var screenSize = window.innerWidth + "x" + window.innerHeight;
 
         // setup map
-        var src = "http://maps.googleapis.com/maps/api/staticmap?size=" + screenSize + "&sensor=false&path=";
+        var src = "http://maps.googleapis.com/maps/api/staticmap?size=" + screenSize + "&sensor=true&path=";
 
         // add path to map
         for (var i = 0; i < Globals.cntUpdates; i++) {
@@ -111,6 +111,9 @@ var Globals = {
         // put marker at start and end of route
         src += "&markers=" + path[0].latitude + "," + path[0].longitude + "|" +
             path[path.length - 1].latitude + "," + path[path.length - 1].longitude;
+
+        // key
+        src += "&key=AIzaSyBV0yKqrMLMHwfmqEbKVR0xj7qreibCc2M";
 
         // load map, when loaded it will fade in
         hiddenMap.src = src;
@@ -192,5 +195,5 @@ var Globals = {
         }, speedInMilliseconds);
     }
 
-    createFakePositions(1000);
+    //createFakePositions(1000);
 })();

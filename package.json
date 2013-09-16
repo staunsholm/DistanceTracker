@@ -1,5 +1,5 @@
 {
-    "name": "Distance Tracker",
+    "name": "DistanceTracker",
     "description": "HTML5 based running/biking/whatever tracker.",
     "repository": {
         "type": "git",

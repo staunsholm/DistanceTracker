@@ -32,7 +32,7 @@ module.exports = function (grunt) {
                     './': ['Server/**', 'package.json']
                 },
                 options: {
-                    path: '/usr/local/projects/xxxxx/',
+                    path: '/usr/local/projects/DistanceTracker/',
                     username: 'root',
                     //password: '',
                     privateKey: grunt.file.read("./MikkelStaunsholm.pem"),
@@ -74,7 +74,7 @@ module.exports = function (grunt) {
                         expand: true,
                         cwd: '.',
                         src: ['Client/**'],
-                        dest: '/staunsholm/test.staunsholm.dk/xxxx'
+                        dest: '/staunsholm/test.staunsholm.dk/DistanceTracker'
                     }
                 ]
             }
