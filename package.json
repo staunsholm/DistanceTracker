@@ -1,9 +1,9 @@
 {
-    "name": "",
-    "description": "",
+    "name": "Distance Tracker",
+    "description": "HTML5 based running/biking/whatever tracker.",
     "repository": {
         "type": "git",
-        "url": "https://github.com/staunsholm/xxxxx.git"
+        "url": "https://github.com/staunsholm/DistanceTracker.git"
     },
     "dependencies": {
     },
