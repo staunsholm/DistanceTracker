@@ -7,6 +7,10 @@ var Globals = {
     latestDistanceTime: 0
 };
 
+var requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame;
+
+var devicePixelRatio = window.devicePixelRatio ? window.devicePixelRatio : 1;
+
 (function () {
     var resetTracking = document.getElementById('resetTracking');
     var distanceElement = document.getElementById('distance');
@@ -44,6 +48,11 @@ var Globals = {
     });
 
     // setup geolocation
+    if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser");
+        return;
+    }
+
     navigator.geolocation.watchPosition(update, locationError, {
         enableHighAccuracy: true,
         timeout: Infinity,
@@ -53,7 +62,7 @@ var Globals = {
     // click reset to start tracking new route from current position
     resetTracking.addEventListener('click', function () {
         if (!latestPosition) {
-            alert('Location not yet obtained. This can a while...');
+            alert('Location not yet obtained. This can take a while...');
             return;
         }
 
@@ -70,6 +79,12 @@ var Globals = {
     });
 
     function update(position) {
+        if (latestPosition &&
+            position.coords.latitude === latestPosition.coords.latitude &&
+            position.coords.longitude === latestPosition.coords.longitude) {
+            return;
+        }
+
         latestPosition = position;
         path.push(latestPosition.coords);
 
@@ -120,8 +135,8 @@ var Globals = {
     }
 
     // handle geolocation errors
-    function locationError(err) {
-        console.log(err);
+    function locationError() {
+        alert("Could not find your position. Did you allow the app to use geo location?");
     }
 
     // calculate distance between two positions
