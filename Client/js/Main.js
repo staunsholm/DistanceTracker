@@ -32,7 +32,7 @@ var devicePixelRatio = window.devicePixelRatio ? window.devicePixelRatio : 1;
         map1.style.opacity = 1;
         map1.style.transitionDelay = 0;
         map2.style.opacity = 0;
-        map2.style.transitionDelay = "0.3s";
+        map2.style.transitionDelay = "0.5s";
 
         visibleMap = map1;
         hiddenMap = map2;
@@ -41,7 +41,7 @@ var devicePixelRatio = window.devicePixelRatio ? window.devicePixelRatio : 1;
         map2.style.opacity = 1;
         map2.style.transitionDelay = 0;
         map1.style.opacity = 0;
-        map1.style.transitionDelay = "0.3s";
+        map1.style.transitionDelay = "0.5s";
 
         visibleMap = map2;
         hiddenMap = map1;
