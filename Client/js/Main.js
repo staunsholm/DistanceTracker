@@ -12,40 +12,71 @@ var requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAni
 var devicePixelRatio = window.devicePixelRatio ? window.devicePixelRatio : 1;
 
 (function () {
-    var resetTracking = document.getElementById('resetTracking');
+    var resetTrackingButton = document.getElementById('resetTracking');
     var distanceElement = document.getElementById('distance');
     var timeElement = document.getElementById('time');
     var speedElement = document.getElementById('speed');
     var averageElement = document.getElementById('average');
-    var map1 = document.getElementById('map1');
-    var map2 = document.getElementById('map2');
 
-    var path = [];
+    var map;
+    var startMarker;
+    var endMarker;
+    var currentCenter;
+    var path = new google.maps.MVCArray;
     var latestPosition;
+    var previousPosition;
     var lastDistanceTimeTemp = 0;
 
-    // setup two images that can fade from one to the other when new maps are loaded
-    var visibleMap = map1;
-    var hiddenMap = map2;
+    // setup js based map
+    (function initMap() {
+        // wait for starting position
+        if (!latestPosition) {
+            setTimeout(initMap, 500);
+            return;
+        }
 
-    map1.addEventListener('load', function () {
-        map1.style.opacity = 1;
-        map1.style.transitionDelay = 0;
-        map2.style.opacity = 0;
-        map2.style.transitionDelay = "0.5s";
+        map = new google.maps.Map(
+            document.getElementById("map-canvas"),
+            {
+                center: currentCenter,
+                zoom: 16,
+                mapTypeId: google.maps.MapTypeId.ROADMAP,
+                streetViewControl: false,
+                mapTypeControl: false,
+                zoomControl: false
+            }
+        );
 
-        visibleMap = map1;
-        hiddenMap = map2;
-    });
-    map2.addEventListener('load', function () {
-        map2.style.opacity = 1;
-        map2.style.transitionDelay = 0;
-        map1.style.opacity = 0;
-        map1.style.transitionDelay = "0.5s";
+        startMarker = new google.maps.Marker({
+            position: currentCenter,
+            map: map,
+            title: 'Start',
+            icon: {
+                path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                strokeColor: "#df3020",
+                scale: 4
+            }
+        });
 
-        visibleMap = map2;
-        hiddenMap = map1;
-    });
+        endMarker = new google.maps.Marker({
+            position: currentCenter,
+            map: map,
+            title: 'End',
+            icon: {
+                path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                strokeColor: "#30df20",
+                scale: 4
+            }
+        });
+
+        new google.maps.Polyline({
+            path: path,
+            strokeColor: '#0000ff',
+            strokeOpacity: 1.0,
+            strokeWeight: 2,
+            map: map
+        });
+    })();
 
     // setup geolocation
     if (!navigator.geolocation) {
@@ -60,7 +91,14 @@ var devicePixelRatio = window.devicePixelRatio ? window.devicePixelRatio : 1;
     });
 
     // click reset to start tracking new route from current position
-    resetTracking.addEventListener('click', function () {
+    if (window.touchevent) {
+        resetTrackingButton.addEventListener('touchup', resetTracking);
+    }
+    else {
+        resetTrackingButton.addEventListener('click', resetTracking);
+    }
+
+    function resetTracking() {
         if (!latestPosition) {
             alert('Location not yet obtained. This can take a while...');
             return;
@@ -76,32 +114,60 @@ var devicePixelRatio = window.devicePixelRatio ? window.devicePixelRatio : 1;
 
             update(latestPosition)
         }
+    }
+
+    // rwd: if turning device, do update
+    window.addEventListener('orientationchange', function () {
+        update(latestPosition, {onlyUpdateUI: true});
     });
 
-    function update(position) {
-        if (latestPosition &&
-            position.coords.latitude === latestPosition.coords.latitude &&
-            position.coords.longitude === latestPosition.coords.longitude) {
-            return;
+    // update UI
+    function update(position, options) {
+        if (!options) {
+            options = {};
         }
 
-        latestPosition = position;
-        path.push(latestPosition.coords);
+        if (!options.onlyUpdateUI) {
+            if (latestPosition &&
+                position.coords.latitude === latestPosition.coords.latitude &&
+                position.coords.longitude === latestPosition.coords.longitude) {
+                return;
+            }
 
-        Globals.cntUpdates++;
+            latestPosition = position;
 
-        // calculate total distance
-        if (Globals.cntUpdates > 1) {
-            Globals.latestDistance = distance(path[Globals.cntUpdates - 1], path[Globals.cntUpdates - 2]);
-            Globals.totalDistance += Globals.latestDistance;
-        }
+            Globals.cntUpdates++;
 
-        var totalDistanceString;
-        if (this.totalDistance > 1) {
-            totalDistanceString = Math.round(Globals.totalDistance * 1000) / 1000 + " km";
-        }
-        else {
-            totalDistanceString = Math.round(Globals.totalDistance * 1000) + " m";
+            // calculate total distance
+            if (previousPosition) {
+                Globals.latestDistance = distance(latestPosition.coords, previousPosition.coords);
+                Globals.totalDistance += Globals.latestDistance;
+            }
+
+            var totalDistanceString;
+            if (this.totalDistance > 1) {
+                totalDistanceString = Math.round(Globals.totalDistance * 1000) / 1000 + " km";
+            }
+            else {
+                totalDistanceString = Math.round(Globals.totalDistance * 1000) + " m";
+            }
+
+            // update path
+            currentCenter = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+
+            var l = path.length;
+
+            if (l < 3 || Globals.latestDistance > .02) {
+                path.push(currentCenter);
+
+                previousPosition = latestPosition;
+            }
+            else {
+                path.setAt(path.length - 1, currentCenter);
+
+                previousPosition.coords.latitude = path.getAt(l - 2).lat();
+                previousPosition.coords.longitude = path.getAt(l - 2).lng();
+            }
         }
 
         distanceElement.innerHTML = "Distance: " + totalDistanceString;
@@ -111,27 +177,13 @@ var devicePixelRatio = window.devicePixelRatio ? window.devicePixelRatio : 1;
         Globals.latestDistanceTime = t - lastDistanceTimeTemp;
         lastDistanceTimeTemp = t;
 
-        // find screen size (show biggest possible map for device)
-        var screenSize = window.innerWidth + "x" + window.innerHeight;
+        if (map && endMarker) {
+            // put marker at start and end of route
+            endMarker.setPosition(currentCenter);
 
-        // setup map
-        var src = "http://maps.googleapis.com/maps/api/staticmap?size=" + screenSize + "&sensor=true&path=";
-
-        // add path to map
-        for (var i = 0; i < Globals.cntUpdates; i++) {
-            if (i !== 0) src += "|";
-            src += path[i].latitude + "," + path[i].longitude;
+            // pan to new position
+            map.panTo(currentCenter);
         }
-
-        // put marker at start and end of route
-        src += "&markers=" + path[0].latitude + "," + path[0].longitude + "|" +
-            path[path.length - 1].latitude + "," + path[path.length - 1].longitude;
-
-        // key
-        src += "&key=AIzaSyBV0yKqrMLMHwfmqEbKVR0xj7qreibCc2M";
-
-        // load map, when loaded it will fade in
-        hiddenMap.src = src;
     }
 
     // handle geolocation errors
@@ -159,12 +211,14 @@ var devicePixelRatio = window.devicePixelRatio ? window.devicePixelRatio : 1;
         var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         var d = R * c;
 
-        return d;
+        return d ? d : 0;
     }
 
+    // update every frame
     function updateTime(dt) {
         requestAnimationFrame(updateTime);
 
+        // update time
         var t = Date.now() - Globals.startTime;
         if (t === Globals.latestTime) return;
         Globals.latestTime = t;
@@ -199,12 +253,12 @@ var devicePixelRatio = window.devicePixelRatio ? window.devicePixelRatio : 1;
     // debug: creates new positions at a specified interval
     function createFakePositions(speedInMilliseconds) {
         setInterval(function () {
-            if (Globals.cntUpdates === 0) return;
+            if (!latestPosition) return;
 
             update({
                 coords: {
-                    latitude: path[Globals.cntUpdates - 1].latitude + Math.random() / 1000,
-                    longitude: path[Globals.cntUpdates - 1].longitude + Math.random() / 1000
+                    latitude: latestPosition.coords.latitude + Math.random() / 10000,
+                    longitude: latestPosition.coords.longitude + Math.random() / 10000
                 }
             })
         }, speedInMilliseconds);
